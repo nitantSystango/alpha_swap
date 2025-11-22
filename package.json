@@ -4,7 +4,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "ts-node src/index.ts"
+    "start:server": "ts-node src/server.ts",
+    "start:web": "cd web && npm run dev",
+    "start": "concurrently \"npm run start:server\" \"npm run start:web\""
   },
   "keywords": [],
   "author": "",
@@ -14,9 +16,16 @@
     "@cowprotocol/cow-sdk": "^7.1.1",
     "@cowprotocol/sdk-ethers-v6-adapter": "^0.2.0",
     "@types/node": "^24.10.1",
+    "concurrently": "^9.2.1",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "ethers": "^6.15.0",
+    "express": "^5.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5"
   }
 }

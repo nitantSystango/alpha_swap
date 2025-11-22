@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { BrowserProvider, type Signer, ethers } from 'ethers';
-import { TradingSdk, OrderKind } from '@cowprotocol/cow-sdk';
+import { TradingSdk } from '@cowprotocol/cow-sdk';
 import { EthersV6Adapter } from '@cowprotocol/sdk-ethers-v6-adapter';
 import { AdapterContext } from '@cowprotocol/sdk-common';
+import { swapApi } from '../api/swapApi';
 
 export interface CowHook {
     provider: BrowserProvider | null;
@@ -75,34 +76,74 @@ export const useCowSdk = (): CowHook => {
         kind: 'sell' | 'buy',
         decimals: number
     ) => {
-        if (!sdk || !account) throw new Error("SDK not initialized");
+        if (!account) throw new Error("Wallet not connected");
 
-        const amountBigInt = ethers.parseUnits(amount, decimals);
-
-        const params = {
+        // Call Backend API
+        const response = await swapApi.getQuote({
             sellToken,
             buyToken,
-            kind: kind === 'sell' ? OrderKind.SELL : OrderKind.BUY,
-            amount: amountBigInt.toString(),
-            userAddress: account,
-            sellTokenDecimals: decimals, // Simplified: assuming same decimals for now or passed correctly
-            buyTokenDecimals: decimals, // Needs refinement in UI to pass both
+            amount,
+            kind,
+            sellTokenDecimals: decimals,
+            buyTokenDecimals: decimals, // TODO: Handle different decimals
+            userAddress: account
+        });
+        return response;
+    }, [account]);
+
+    const placeOrder = useCallback(async (quoteResponse: any) => {
+        if (!sdk || !signer || !chainId) throw new Error("SDK not initialized");
+
+        // quoteResponse is the JSON from backend
+        // We use orderToSign which is prepared by the SDK on the backend
+        const order = quoteResponse.quoteResults.orderToSign;
+
+        if (!order) throw new Error("Invalid quote response: missing orderToSign");
+
+        // We need the domain.
+        const domain = {
+            name: 'Gnosis Protocol',
+            version: 'v2',
+            chainId,
+            verifyingContract: '0x9008D19f58AAbD9eD0D60971565AA8510560ab41' // Mainnet/Sepolia/etc. need correct address
         };
 
-        // We need to be careful about decimals. 
-        // The UI should probably handle fetching decimals or asking user.
-        // For now, we pass one 'decimals' arg, which is risky if tokens differ.
-        // I'll update the signature to take both or just let the UI handle it.
-        // Let's update signature in next step if needed.
+        // TODO: verifyingContract address varies by chain.
+        // The SDK has this mapping. 
+        // For now, let's try to get it from the SDK instance if possible, or hardcode for Mainnet/Sepolia.
+        if (chainId === 11155111) {
+            domain.verifyingContract = '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'; // Sepolia
+        } else {
+            domain.verifyingContract = '0x9008D19f58AAbD9eD0D60971565AA8510560ab41'; // Mainnet
+        }
 
-        return await sdk.getQuote(params);
-    }, [sdk, account]);
+        const types = {
+            Order: [
+                { name: "sellToken", type: "address" },
+                { name: "buyToken", type: "address" },
+                { name: "receiver", type: "address" },
+                { name: "sellAmount", type: "uint256" },
+                { name: "buyAmount", type: "uint256" },
+                { name: "validTo", type: "uint32" },
+                { name: "appData", type: "bytes32" },
+                { name: "feeAmount", type: "uint256" },
+                { name: "kind", type: "string" },
+                { name: "partiallyFillable", type: "bool" },
+                { name: "sellTokenBalance", type: "string" },
+                { name: "buyTokenBalance", type: "string" },
+            ]
+        };
 
-    const placeOrder = useCallback(async (quoteAndPost: any) => {
-        if (!quoteAndPost) throw new Error("No quote provided");
-        const result = await quoteAndPost.postSwapOrderFromQuote();
-        return result.orderId;
-    }, []);
+        const signature = await signer.signTypedData(domain, types, order);
+
+        // Submit to Backend
+        const orderId = await swapApi.submitOrder({
+            quote: order,
+            signature
+        });
+
+        return orderId.orderId;
+    }, [sdk, signer, chainId, account]);
 
     useEffect(() => {
         const ethereum = (window as any).ethereum;

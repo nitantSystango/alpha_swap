@@ -90,6 +90,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                         onChange={(e) => {
                             const token = availableTokens.find(t => t.address === e.target.value);
                             setSellToken(token || null);
+                            setQuote(null);
                         }}
                         disabled={availableTokens.length === 0}
                         className="token-select"
@@ -123,6 +124,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                         onChange={(e) => {
                             const token = availableTokens.find(t => t.address === e.target.value);
                             setBuyToken(token || null);
+                            setQuote(null);
                         }}
                         disabled={availableTokens.length === 0}
                         className="token-select"
