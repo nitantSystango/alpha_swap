@@ -31,14 +31,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
         setQuote(null);
         setOrderId(null);
         try {
-            // For 'sell' order, amount is in sellToken.
             const decimals = sellToken.decimals;
-
             const q = await getQuote(
                 sellToken.address,
                 buyToken.address,
                 amount,
-                'sell', // Always 'sell' for this UI structure
+                'sell',
                 decimals
             );
             setQuote(q);
@@ -70,10 +68,10 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     };
 
     return (
-        <div className="order-form card" style={{ margin: '0 auto' }}>
-            <div className="header-row">
-                <h3>Swap</h3>
-                <div className="settings-icon">⚙️</div>
+        <div className="glass-card">
+            <div className="order-form-header">
+                <h3 style={{ margin: 0, fontWeight: 500 }}>Swap</h3>
+                <div className="settings-icon" style={{ cursor: 'pointer', opacity: 0.7 }}>⚙️</div>
             </div>
 
             <div className="input-container">
@@ -102,7 +100,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     </select>
                 </div>
                 <div className="balance-row">
-                    <span>Balance: -</span>
+                    <span>Balance: 0</span>
                 </div>
             </div>
 
@@ -136,7 +134,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     </select>
                 </div>
                 <div className="balance-row">
-                    <span>Balance: -</span>
+                    <span>Balance: 0</span>
                 </div>
             </div>
 
@@ -147,7 +145,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     <button
                         onClick={handleGetQuote}
                         disabled={loading || !sdk || !sellToken || !buyToken || !amount}
-                        className="btn-primary full-width large-btn"
+                        className="btn-primary"
                     >
                         {loading ? 'Fetching Quote...' : 'Get Quote'}
                     </button>
@@ -155,17 +153,17 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     <button
                         onClick={handlePlaceOrder}
                         disabled={loading}
-                        className="btn-primary full-width large-btn"
+                        className="btn-primary"
                     >
-                        {loading ? 'Signing...' : 'Swap'}
+                        {loading ? 'Confirm Swap' : 'Swap'}
                     </button>
                 )}
             </div>
 
             {orderId && (
                 <div className="success-message">
-                    Order Placed! <br />
-                    <small>{orderId}</small>
+                    Order Placed Successfully! <br />
+                    <small style={{ opacity: 0.7, fontSize: '12px' }}>{orderId}</small>
                 </div>
             )}
         </div>
