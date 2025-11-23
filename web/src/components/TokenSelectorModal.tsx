@@ -12,6 +12,7 @@ interface TokenSelectorModalProps {
     onClose: () => void;
     onSelect: (token: Token) => void;
     connectedChainId: number | null; // Wallet's connected chain
+    selectedTokenChainId?: number; // Chain of the currently selected token (if any)
 }
 
 // Updated common tokens to match "Favorite tokens"
@@ -21,10 +22,12 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
     isOpen,
     onClose,
     onSelect,
-    connectedChainId
+    connectedChainId,
+    selectedTokenChainId
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [selectedChainId, setSelectedChainId] = useState<number | null>(connectedChainId);
+    // Initialize with selectedTokenChainId if available, otherwise connectedChainId
+    const [selectedChainId, setSelectedChainId] = useState<number | null>(selectedTokenChainId || connectedChainId);
     const [chains, setChains] = useState<Chain[]>([]);
     const [tokens, setTokens] = useState<Token[]>([]);
     const [loading, setLoading] = useState(false);

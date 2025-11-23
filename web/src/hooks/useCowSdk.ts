@@ -76,7 +76,10 @@ export const useCowSdk = (): CowHook => {
         kind: 'sell' | 'buy',
         decimals: number
     ) => {
-        if (!account || !chainId) throw new Error("Wallet not connected");
+        // Use connected chainId or default to Mainnet (1)
+        const activeChainId = chainId || 1;
+        // Use connected account or default to ZeroAddress (for simulations)
+        const activeAccount = account || ethers.ZeroAddress;
 
         // Call Backend API with chainId
         const response = await swapApi.getQuote({
@@ -86,8 +89,8 @@ export const useCowSdk = (): CowHook => {
             kind,
             sellTokenDecimals: decimals,
             buyTokenDecimals: decimals, // TODO: Handle different decimals
-            userAddress: account,
-            chainId // Pass chainId to backend
+            userAddress: activeAccount,
+            chainId: activeChainId // Pass chainId to backend
         });
         return response;
     }, [account, chainId]);

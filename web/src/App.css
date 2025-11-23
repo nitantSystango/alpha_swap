@@ -13,6 +13,7 @@
   max-width: 1200px;
   margin: 0 auto;
   width: 100%;
+  position: relative; /* Added for absolute positioning of nav-links */
 }
 
 .header-actions {
@@ -78,6 +79,9 @@
 .nav-links {
   display: flex;
   gap: 24px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
 }
 
 .nav-link {

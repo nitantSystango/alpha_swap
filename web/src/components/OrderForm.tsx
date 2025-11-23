@@ -59,7 +59,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     }, [amount]);
 
     const fetchQuote = async (isRefresh = false) => {
-        if (!sdk || !sellToken || !buyToken || !debouncedAmount || parseFloat(debouncedAmount) === 0) {
+        // We can fetch quote even if sdk is not initialized (wallet not connected)
+        if (!sellToken || !buyToken || !debouncedAmount || parseFloat(debouncedAmount) === 0) {
             setQuote(null);
             return;
         }
@@ -116,6 +117,8 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     }, [quote, sdk, sellToken, buyToken, debouncedAmount]);
 
 
+
+
     const handlePlaceOrder = async () => {
         if (!quote) return;
         setLoading(true);
@@ -140,10 +143,24 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     };
 
     const handleTokenSelect = (token: Token) => {
+        // If the selected token is on a different chain than the current one,
+        // we should clear the other token to avoid cross-chain confusion
+        // Note: The chain switch itself is handled in the modal, so by the time
+        // we get here or shortly after, chainId might update.
+
+        // However, if we are just selecting a token and the chain is already correct:
         if (modalType === 'sell') {
             setSellToken(token);
+            // If we're switching chains (implied if token.chainId != buyToken.chainId), clear buyToken
+            if (buyToken && token.chainId !== buyToken.chainId) {
+                setBuyToken(null);
+            }
         } else {
             setBuyToken(token);
+            // If we're switching chains (implied if token.chainId != sellToken.chainId), clear sellToken
+            if (sellToken && token.chainId !== sellToken.chainId) {
+                setSellToken(null);
+            }
         }
         // Quote will be cleared by the useEffect dependency change
         setIsModalOpen(false);
@@ -157,6 +174,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     onClose={() => setIsModalOpen(false)}
                     onSelect={handleTokenSelect}
                     connectedChainId={chainId}
+                    selectedTokenChainId={modalType === 'sell' ? sellToken?.chainId : buyToken?.chainId}
                 />
             ) : (
                 <>
