@@ -14,14 +14,27 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     const [sellToken, setSellToken] = useState<Token | null>(null);
     const [buyToken, setBuyToken] = useState<Token | null>(null);
     const [amount, setAmount] = useState('');
+    const [debouncedAmount, setDebouncedAmount] = useState(amount);
     const [quote, setQuote] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [orderId, setOrderId] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<'sell' | 'buy'>('sell');
 
     const [tokenList, setTokenList] = useState<Token[]>([]);
+
+    // Debounce amount
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedAmount(amount);
+        }, 500);
+
+        return () => {
+            clearTimeout(handler);
+        };
+    }, [amount]);
 
     useEffect(() => {
         const fetchTokens = async () => {
@@ -34,7 +47,6 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                 const dynamicTokens = await TokenService.fetchTokens(chainId);
 
                 // Merge lists (prefer dynamic, but keep defaults if fetch fails or for speed)
-                // For now, let's just use dynamic if available, or default if not
                 if (dynamicTokens.length > 0) {
                     setTokenList(dynamicTokens);
                 }
@@ -50,29 +62,63 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
         setBuyToken(null);
     }, [chainId]);
 
-    const handleGetQuote = async () => {
-        if (!sdk || !sellToken || !buyToken) return;
-        setLoading(true);
+    const fetchQuote = async (isRefresh = false) => {
+        if (!sdk || !sellToken || !buyToken || !debouncedAmount || parseFloat(debouncedAmount) === 0) {
+            setQuote(null);
+            return;
+        }
+
+        if (!isRefresh) {
+            setLoading(true);
+            setOrderId(null);
+        } else {
+            setRefreshing(true);
+        }
+
         setError(null);
-        setQuote(null);
-        setOrderId(null);
+
         try {
             const decimals = sellToken.decimals;
             const q = await getQuote(
                 sellToken.address,
                 buyToken.address,
-                amount,
+                debouncedAmount,
                 'sell',
                 decimals
             );
             setQuote(q);
         } catch (err: any) {
             console.error(err);
-            setError(err.message || 'Failed to fetch quote');
+            // Only show error if it's not a refresh (to avoid annoying popups) or if it's a critical error
+            if (!isRefresh) {
+                setError(err.message || 'Failed to fetch quote');
+                setQuote(null);
+            }
         } finally {
-            setLoading(false);
+            if (!isRefresh) {
+                setLoading(false);
+            } else {
+                setRefreshing(false);
+            }
         }
     };
+
+    // Auto-fetch quote when dependencies change
+    useEffect(() => {
+        fetchQuote();
+    }, [sdk, sellToken, buyToken, debouncedAmount]);
+
+    // Auto-refresh quote every 20 seconds
+    useEffect(() => {
+        if (!quote) return;
+
+        const interval = setInterval(() => {
+            fetchQuote(true);
+        }, 20000);
+
+        return () => clearInterval(interval);
+    }, [quote, sdk, sellToken, buyToken, debouncedAmount]);
+
 
     const handlePlaceOrder = async () => {
         if (!quote) return;
@@ -103,7 +149,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
         } else {
             setBuyToken(token);
         }
-        setQuote(null);
+        // Quote will be cleared by the useEffect dependency change
         setIsModalOpen(false);
     };
 
@@ -156,7 +202,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     </div>
 
                     <div className="arrow-container">
-                        <div className="arrow-icon">↓</div>
+                        {refreshing ? (
+                            <div className="refresh-spinner">
+                                <img src="/alphaswap_logo_v2.svg" alt="Refreshing..." />
+                            </div>
+                        ) : (
+                            <div className="arrow-icon">↓</div>
+                        )}
                     </div>
 
                     <div className="input-container">
@@ -194,23 +246,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     {error && <div className="error-banner">{error}</div>}
 
                     <div className="actions">
-                        {!quote ? (
-                            <button
-                                onClick={handleGetQuote}
-                                disabled={loading || !sdk || !sellToken || !buyToken || !amount}
-                                className="btn-primary"
-                            >
-                                {loading ? 'Fetching Quote...' : 'Get Quote'}
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handlePlaceOrder}
-                                disabled={loading}
-                                className="btn-primary"
-                            >
-                                {loading ? 'Confirm Swap' : 'Swap'}
-                            </button>
-                        )}
+                        <button
+                            onClick={handlePlaceOrder}
+                            disabled={loading || !quote || !sdk}
+                            className="btn-primary"
+                        >
+                            {loading ? (quote ? 'Swapping...' : 'Fetching Quote...') : (quote ? 'Swap' : 'Enter Amount')}
+                        </button>
                     </div>
 
                     {orderId && (

@@ -10,7 +10,7 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <div className="logo-section">
-          <img src="/alphaswap_logo.svg" alt="AlphaSwap Logo" className="app-logo" />
+          <img src="/alphaswap_logo_v2.svg" alt="AlphaSwap Logo" className="app-logo" />
           <div className="app-title">AlphaSwap</div>
         </div>
 
