@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCowSdk } from '../hooks/useCowSdk';
-import { TOKENS, type Token } from '../constants/tokens';
-import { TokenService } from '../services/TokenService';
+import { type Token } from '../constants/tokens';
 import { TokenSelectorModal } from './TokenSelectorModal';
 import { ethers } from 'ethers';
 
@@ -11,8 +10,16 @@ interface OrderFormProps {
 
 export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     const { getQuote, placeOrder, sdk, chainId } = cowSdk;
-    const [sellToken, setSellToken] = useState<Token | null>(null);
-    const [buyToken, setBuyToken] = useState<Token | null>(null);
+    const [sellToken, setSellToken] = useState<Token | null>(() => {
+        // Restore from localStorage on mount
+        const saved = localStorage.getItem('alphaswap_sellToken');
+        return saved ? JSON.parse(saved) : null;
+    });
+    const [buyToken, setBuyToken] = useState<Token | null>(() => {
+        // Restore from localStorage on mount
+        const saved = localStorage.getItem('alphaswap_buyToken');
+        return saved ? JSON.parse(saved) : null;
+    });
     const [amount, setAmount] = useState('');
     const [debouncedAmount, setDebouncedAmount] = useState(amount);
     const [quote, setQuote] = useState<any>(null);
@@ -23,7 +30,22 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<'sell' | 'buy'>('sell');
 
-    const [tokenList, setTokenList] = useState<Token[]>([]);
+    // Persist tokens to localStorage whenever they change
+    useEffect(() => {
+        if (sellToken) {
+            localStorage.setItem('alphaswap_sellToken', JSON.stringify(sellToken));
+        } else {
+            localStorage.removeItem('alphaswap_sellToken');
+        }
+    }, [sellToken]);
+
+    useEffect(() => {
+        if (buyToken) {
+            localStorage.setItem('alphaswap_buyToken', JSON.stringify(buyToken));
+        } else {
+            localStorage.removeItem('alphaswap_buyToken');
+        }
+    }, [buyToken]);
 
     // Debounce amount
     useEffect(() => {
@@ -35,32 +57,6 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
             clearTimeout(handler);
         };
     }, [amount]);
-
-    useEffect(() => {
-        const fetchTokens = async () => {
-            if (chainId) {
-                // Start with default tokens
-                const defaultTokens = TOKENS[chainId] || [];
-                setTokenList(defaultTokens);
-
-                // Fetch dynamic list
-                const dynamicTokens = await TokenService.fetchTokens(chainId);
-
-                // Merge lists (prefer dynamic, but keep defaults if fetch fails or for speed)
-                if (dynamicTokens.length > 0) {
-                    setTokenList(dynamicTokens);
-                }
-            }
-        };
-        fetchTokens();
-    }, [chainId]);
-
-    const availableTokens = tokenList;
-
-    useEffect(() => {
-        setSellToken(null);
-        setBuyToken(null);
-    }, [chainId]);
 
     const fetchQuote = async (isRefresh = false) => {
         if (!sdk || !sellToken || !buyToken || !debouncedAmount || parseFloat(debouncedAmount) === 0) {
@@ -160,7 +156,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     onSelect={handleTokenSelect}
-                    tokens={availableTokens}
+                    connectedChainId={chainId}
                 />
             ) : (
                 <>
@@ -181,7 +177,6 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                             <button
                                 className="token-select"
                                 onClick={() => openModal('sell')}
-                                disabled={availableTokens.length === 0}
                             >
                                 {sellToken ? (
                                     <>
@@ -215,15 +210,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                         <div className="input-row">
                             <input
                                 type="text"
-                                value={quote ? ethers.formatUnits(quote.quoteResults.quoteResponse.quote.buyAmount, buyToken?.decimals) : ''}
+                                value={quote ? parseFloat(ethers.formatUnits(quote.quoteResults.quoteResponse.quote.buyAmount, buyToken?.decimals)).toFixed(6).replace(/\.?0+$/, '') : ''}
                                 readOnly
-                                placeholder="0"
+                                placeholder="0.0"
                                 className="amount-input"
                             />
                             <button
                                 className="token-select"
                                 onClick={() => openModal('buy')}
-                                disabled={availableTokens.length === 0}
                             >
                                 {buyToken ? (
                                     <>

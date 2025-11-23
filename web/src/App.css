@@ -15,6 +15,12 @@
   width: 100%;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .logo-section {
   display: flex;
   align-items: center;

@@ -1,25 +1,74 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { type Token } from '../constants/tokens';
+
+interface Chain {
+    chainId: number;
+    name: string;
+    icon: string;
+}
 
 interface TokenSelectorModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSelect: (token: Token) => void;
-    tokens: Token[];
+    connectedChainId: number | null; // Wallet's connected chain
 }
 
 // Updated common tokens to match "Favorite tokens"
 const FAVORITE_SYMBOLS = ['DAI', 'COW', 'USDC', 'USDT', 'WBTC', 'WETH'];
 
-const NETWORKS = [
-    { id: 1, name: 'Ethereum', icon: '🔷', active: true },
-    { id: 100, name: 'Gnosis', icon: '🟩', active: false },
-    { id: 42161, name: 'Arbitrum', icon: '🔵', active: false },
-    { id: 8453, name: 'Base', icon: '🔵', active: false },
-];
-
-export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({ isOpen, onClose, onSelect, tokens }) => {
+export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
+    isOpen,
+    onClose,
+    onSelect,
+    connectedChainId
+}) => {
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectedChainId, setSelectedChainId] = useState<number | null>(connectedChainId);
+    const [chains, setChains] = useState<Chain[]>([]);
+    const [tokens, setTokens] = useState<Token[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    // Fetch supported chains on mount
+    useEffect(() => {
+        const fetchChains = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/chains');
+                const data = await response.json();
+                setChains(data);
+            } catch (error) {
+                console.error('Error fetching chains:', error);
+            }
+        };
+        fetchChains();
+    }, []);
+
+    // Auto-select chain when wallet connects
+    useEffect(() => {
+        if (connectedChainId && !selectedChainId) {
+            setSelectedChainId(connectedChainId);
+        }
+    }, [connectedChainId, selectedChainId]);
+
+    // Fetch tokens when selected chain changes
+    useEffect(() => {
+        const fetchTokens = async () => {
+            if (!selectedChainId) return;
+
+            setLoading(true);
+            try {
+                const response = await fetch(`http://localhost:3000/api/tokens?chainId=${selectedChainId}`);
+                const data = await response.json();
+                setTokens(data);
+            } catch (error) {
+                console.error('Error fetching tokens:', error);
+                setTokens([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchTokens();
+    }, [selectedChainId]);
 
     const filteredTokens = useMemo(() => {
         if (!searchQuery) return tokens;
@@ -35,6 +84,41 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({ isOpen, 
         // Find tokens from the full list that match favorite symbols
         return FAVORITE_SYMBOLS.map(symbol => tokens.find(t => t.symbol === symbol)).filter((t): t is Token => !!t);
     }, [tokens]);
+
+    const handleTokenSelect = async (token: Token) => {
+        // Check if token is from a different chain than wallet
+        if (token.chainId && connectedChainId && token.chainId !== connectedChainId) {
+            // First, select the token so it persists
+            onSelect(token);
+            onClose();
+
+            // Then request network switch
+            try {
+                const chainIdHex = `0x${token.chainId.toString(16)}`;
+                await (window as any).ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: chainIdHex }],
+                });
+                // After successful switch, the wallet will reload and connectedChainId will update
+            } catch (error: any) {
+                // Handle error - user rejected or chain not added
+                if (error.code === 4902) {
+                    // Chain not added to wallet - could implement wallet_addEthereumChain here
+                    console.error('Chain not added to wallet:', error);
+                    alert(`Please add chain ${token.chainId} to your wallet first`);
+                } else {
+                    console.error('Error switching network:', error);
+                }
+            }
+            return;
+        }
+
+        // Token is from same chain, proceed with selection
+        onSelect(token);
+        onClose();
+    };
+
+    const selectedChain = chains.find(c => c.chainId === selectedChainId);
 
     if (!isOpen) return null;
 
@@ -54,14 +138,14 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({ isOpen, 
             </div>
 
             <div className="network-selector">
-                {NETWORKS.map(network => (
+                {chains.map(chain => (
                     <button
-                        key={network.id}
-                        className={`network-icon ${network.active ? 'active' : ''}`}
-                        title={network.name}
-                        disabled={!network.active}
+                        key={chain.chainId}
+                        className={`network-icon ${selectedChainId === chain.chainId ? 'active' : ''}`}
+                        title={chain.name}
+                        onClick={() => setSelectedChainId(chain.chainId)}
                     >
-                        {network.icon}
+                        {chain.icon}
                     </button>
                 ))}
             </div>
@@ -77,11 +161,11 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({ isOpen, 
                             <button
                                 key={token.address}
                                 className="common-token-chip"
-                                onClick={() => onSelect(token)}
+                                onClick={() => handleTokenSelect(token)}
                             >
                                 <span className="token-icon-small">
                                     {token.logoURI ? <img src={token.logoURI} alt={token.symbol} /> : '🪙'}
-                                    <span className="chain-badge-small">🔷</span>
+                                    <span className="chain-badge-small">{selectedChain?.icon || '🔷'}</span>
                                 </span>
                                 {token.symbol}
                             </button>
@@ -92,31 +176,39 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({ isOpen, 
 
             <div className="token-list-section">
                 <div className="token-list">
-                    {filteredTokens.map(token => (
-                        <div
-                            key={token.address}
-                            className="token-item"
-                            onClick={() => onSelect(token)}
-                        >
-                            <div className="token-icon-large">
-                                {token.logoURI ? <img src={token.logoURI} alt={token.symbol} /> : '🪙'}
-                                <span className="chain-badge-large">🔷</span>
-                            </div>
-                            <div className="token-info">
-                                <div className="token-name-row">
-                                    <span className="token-symbol-main">{token.symbol}</span>
+                    {loading ? (
+                        <div className="no-results">Loading tokens...</div>
+                    ) : filteredTokens.length > 0 ? (
+                        filteredTokens.map(token => (
+                            <div
+                                key={token.address}
+                                className="token-item"
+                                onClick={() => handleTokenSelect(token)}
+                            >
+                                <div className="token-icon-large">
+                                    {token.logoURI ? <img src={token.logoURI} alt={token.symbol} /> : '🪙'}
+                                    <span className="chain-badge-large">{selectedChain?.icon || '🔷'}</span>
                                 </div>
-                                <div className="token-symbol-row">
-                                    <span className="token-name-sub">{token.name}</span>
+                                <div className="token-info">
+                                    <div className="token-name-row">
+                                        <span className="token-symbol-main">{token.symbol}</span>
+                                    </div>
+                                    <div className="token-symbol-row">
+                                        <span className="token-name-sub">{token.name}</span>
+                                    </div>
+                                </div>
+                                <div className="token-balance">
+                                    {/* Balance placeholder */}
                                 </div>
                             </div>
-                            <div className="token-balance">
-                                {/* Balance placeholder */}
-                            </div>
+                        ))
+                    ) : (
+                        <div className="no-results">
+                            {selectedChain ?
+                                `No tokens available for ${selectedChain.name}` :
+                                'No tokens found'
+                            }
                         </div>
-                    ))}
-                    {filteredTokens.length === 0 && (
-                        <div className="no-results">No tokens found</div>
                     )}
                 </div>
             </div>

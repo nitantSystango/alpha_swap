@@ -1,5 +1,6 @@
 import { useCowSdk } from './hooks/useCowSdk';
 import { WalletConnect } from './components/WalletConnect';
+import { NetworkIndicator } from './components/NetworkIndicator';
 import { OrderForm } from './components/OrderForm';
 import './App.css';
 
@@ -20,7 +21,10 @@ function App() {
           <a href="#" className="nav-link">Explore</a>
         </nav>
 
-        <WalletConnect cowSdk={cowSdk} />
+        <div className="header-actions">
+          <NetworkIndicator chainId={cowSdk.chainId} />
+          <WalletConnect cowSdk={cowSdk} />
+        </div>
       </header>
 
       <main className="app-main">

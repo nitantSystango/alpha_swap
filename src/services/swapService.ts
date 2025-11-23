@@ -1,14 +1,18 @@
 import { ISwapAdapter, QuoteParams, OrderParams } from '../adapters/interfaces/ISwapAdapter';
 import { CowSwapAdapter } from '../adapters/cowSwapAdapter';
-import { SupportedChainId } from '@cowprotocol/cow-sdk';
+import { getSupportedChainId } from '../config/chains';
 
 export class SwapService {
     private adapter: ISwapAdapter;
 
     constructor(chainId: number = 1) {
-        // Factory logic could go here, for now defaulting to CowSwap
-        // Mapping number to SupportedChainId
-        const supportedChainId = chainId === 11155111 ? SupportedChainId.SEPOLIA : SupportedChainId.MAINNET;
+        // Map chainId number to SupportedChainId using helper
+        const supportedChainId = getSupportedChainId(chainId);
+
+        if (!supportedChainId) {
+            throw new Error(`Unsupported chainId: ${chainId}`);
+        }
+
         this.adapter = new CowSwapAdapter(supportedChainId);
     }
 

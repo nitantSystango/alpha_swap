@@ -76,9 +76,9 @@ export const useCowSdk = (): CowHook => {
         kind: 'sell' | 'buy',
         decimals: number
     ) => {
-        if (!account) throw new Error("Wallet not connected");
+        if (!account || !chainId) throw new Error("Wallet not connected");
 
-        // Call Backend API
+        // Call Backend API with chainId
         const response = await swapApi.getQuote({
             sellToken,
             buyToken,
@@ -86,10 +86,11 @@ export const useCowSdk = (): CowHook => {
             kind,
             sellTokenDecimals: decimals,
             buyTokenDecimals: decimals, // TODO: Handle different decimals
-            userAddress: account
+            userAddress: account,
+            chainId // Pass chainId to backend
         });
         return response;
-    }, [account]);
+    }, [account, chainId]);
 
     const placeOrder = useCallback(async (quoteResponse: any) => {
         if (!sdk || !signer || !chainId) throw new Error("SDK not initialized");
@@ -136,10 +137,11 @@ export const useCowSdk = (): CowHook => {
 
         const signature = await signer.signTypedData(domain, types, order);
 
-        // Submit to Backend
+        // Submit to Backend with chainId
         const orderId = await swapApi.submitOrder({
             quote: order,
-            signature
+            signature,
+            chainId // Pass chainId to backend
         });
 
         return orderId.orderId;
