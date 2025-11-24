@@ -40,41 +40,43 @@ export class CowSwapAdapter implements ISwapAdapter {
 
         const amountBigInt = ethers.parseUnits(amount, kind === 'sell' ? sellTokenDecimals : buyTokenDecimals);
 
-        const quoteParams = {
+        const quoteRequest = {
             sellToken,
             buyToken,
+            from: userAddress,
+            receiver: userAddress,
+            validTo: Math.floor(Date.now() / 1000) + 3600, // 1 hour
+            appData: '0x0000000000000000000000000000000000000000000000000000000000000000', // Zero hash to match reference implementation
+            partiallyFillable: false,
+            sellTokenBalance: 'erc20',
+            buyTokenBalance: 'erc20',
             kind: kind === 'sell' ? OrderKind.SELL : OrderKind.BUY,
-            amount: amountBigInt.toString(),
-            sellTokenDecimals,
-            buyTokenDecimals,
-            userAddress,
+            signingScheme: 'eip712', // SigningScheme.EIP712
         };
 
-        const advancedSettings = {
-            appData: {}, // This should generate the default hash 0xb48...
-        };
+        if (kind === 'sell') {
+            (quoteRequest as any).sellAmountBeforeFee = amountBigInt.toString();
+        } else {
+            (quoteRequest as any).buyAmountAfterFee = amountBigInt.toString();
+        }
 
-        const quoteResponse = await this.sdk.getQuote(quoteParams, advancedSettings);
-        // We return the raw quote response which contains the quote and the order parameters needed for signing
+        const quoteResponse = await this.orderBookApi.getQuote(quoteRequest as any);
         return quoteResponse;
     }
 
     async submitOrder(params: OrderParams): Promise<string> {
-        const { quote, signature } = params;
+        const { quote, signature, quoteId, from } = params;
 
-        // The quote object from getQuote (QuoteAndPost) might need to be processed to extract the order body
-        // However, the FE will likely send the exact order body that was signed + the signature.
-        // For simplicity, let's assume 'quote' here is the order body that was signed.
-
-        // Actually, the sdk.getQuote returns a QuoteAndPost object.
-        // We need to send the order parameters + signature.
-
-        // Let's assume the FE sends the constructed order object and the signature.
+        // The quote object passed here is the orderToSign from the quote response
+        // We need to combine it with the signature, quoteId, and from address
+        // to match what the CoW Protocol API expects.
 
         const orderUid = await this.orderBookApi.sendOrder({
-            ...quote, // This should be the order parameters
+            ...quote, // This contains sellToken, buyToken, amounts, validTo, appData, etc.
+            from,     // The user's address
+            quoteId,  // The quote ID to link this order to the quote (validating appData)
             signature,
-            signingScheme: 'eip712', // Assuming EIP-712
+            signingScheme: 'eip712',
         });
 
         return orderUid;

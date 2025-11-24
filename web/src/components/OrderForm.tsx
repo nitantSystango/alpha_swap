@@ -3,6 +3,8 @@ import { useCowSdk } from '../hooks/useCowSdk';
 import { type Token } from '../constants/tokens';
 import { TokenSelectorModal } from './TokenSelectorModal';
 import { ethers } from 'ethers';
+import { ApprovalButton } from './ApprovalButton';
+import { useTokenApproval } from '../hooks/useTokenApproval';
 
 interface OrderFormProps {
     cowSdk: ReturnType<typeof useCowSdk>;
@@ -29,6 +31,53 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
     const [orderId, setOrderId] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalType, setModalType] = useState<'sell' | 'buy'>('sell');
+
+    const [isApproved, setIsApproved] = useState(false);
+    const [sellBalance, setSellBalance] = useState<string>('0');
+    const [buyBalance, setBuyBalance] = useState<string>('0');
+
+    const { getBalance } = useTokenApproval(cowSdk.provider, cowSdk.signer, cowSdk.account);
+
+    // Reset approval state when token changes
+    useEffect(() => {
+        setIsApproved(false);
+    }, [sellToken?.address]);
+
+    const handleApprovalComplete = () => {
+        setIsApproved(true);
+    };
+
+    // Fetch balances
+    useEffect(() => {
+        const fetchBalances = async () => {
+            if (sellToken && cowSdk.account) {
+                try {
+                    const balance = await getBalance(sellToken.address);
+                    setSellBalance(balance.formatted);
+                } catch (e) {
+                    console.error('Error fetching sell token balance:', e);
+                }
+            } else {
+                setSellBalance('0');
+            }
+
+            if (buyToken && cowSdk.account) {
+                try {
+                    const balance = await getBalance(buyToken.address);
+                    setBuyBalance(balance.formatted);
+                } catch (e) {
+                    console.error('Error fetching buy token balance:', e);
+                }
+            } else {
+                setBuyBalance('0');
+            }
+        };
+
+        fetchBalances();
+        // Refresh balances periodically
+        const interval = setInterval(fetchBalances, 10000);
+        return () => clearInterval(interval);
+    }, [sellToken, buyToken, cowSdk.account, getBalance]);
 
     // Persist tokens to localStorage whenever they change
     useEffect(() => {
@@ -210,7 +259,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                             </button>
                         </div>
                         <div className="balance-row">
-                            <span>Balance: 0</span>
+                            <span>Balance: {parseFloat(sellBalance).toFixed(4)}</span>
                         </div>
                     </div>
 
@@ -228,7 +277,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                         <div className="input-row">
                             <input
                                 type="text"
-                                value={quote ? parseFloat(ethers.formatUnits(quote.quoteResults.quoteResponse.quote.buyAmount, buyToken?.decimals)).toFixed(6).replace(/\.?0+$/, '') : ''}
+                                value={quote ? parseFloat(ethers.formatUnits(quote.quote.buyAmount, buyToken?.decimals)).toFixed(6).replace(/\.?0+$/, '') : ''}
                                 readOnly
                                 placeholder="0.0"
                                 className="amount-input"
@@ -251,17 +300,30 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                             </button>
                         </div>
                         <div className="balance-row">
-                            <span>Balance: 0</span>
+                            <span>Balance: {parseFloat(buyBalance).toFixed(4)}</span>
                         </div>
                     </div>
 
                     {error && <div className="error-banner">{error}</div>}
 
                     <div className="actions">
+                        {quote && sellToken && !isApproved && (
+                            <ApprovalButton
+                                provider={cowSdk.provider}
+                                signer={cowSdk.signer}
+                                userAddress={cowSdk.account}
+                                tokenAddress={sellToken.address}
+                                amount={ethers.parseUnits(debouncedAmount, sellToken.decimals).toString()}
+                                onApprovalComplete={handleApprovalComplete}
+                                tokenSymbol={sellToken.symbol}
+                            />
+                        )}
+
                         <button
                             onClick={handlePlaceOrder}
-                            disabled={loading || !quote || !sdk}
+                            disabled={loading || !quote || !sdk || !isApproved}
                             className="btn-primary"
+                            title={!isApproved ? "Please approve token first" : ""}
                         >
                             {loading ? (quote ? 'Swapping...' : 'Fetching Quote...') : (quote ? 'Swap' : 'Enter Amount')}
                         </button>
@@ -270,7 +332,14 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                     {orderId && (
                         <div className="success-message">
                             Order Placed Successfully! <br />
-                            <small style={{ opacity: 0.7, fontSize: '12px' }}>{orderId}</small>
+                            <a
+                                href={`${import.meta.env.VITE_COW_EXPLORER_URL || 'https://explorer.cow.fi/sepolia/orders/'}${orderId}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: 'inherit', fontSize: '12px', textDecoration: 'underline' }}
+                            >
+                                View on CoW Explorer
+                            </a>
                         </div>
                     )}
                 </>
