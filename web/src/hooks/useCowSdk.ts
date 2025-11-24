@@ -98,11 +98,26 @@ export const useCowSdk = (): CowHook => {
     const placeOrder = useCallback(async (quoteResponse: any) => {
         if (!sdk || !signer || !chainId) throw new Error("SDK not initialized");
 
-        // quoteResponse is the JSON from backend
-        // We use orderToSign which is prepared by the SDK on the backend
-        const order = quoteResponse.quoteResults.orderToSign;
+        // quoteResponse is now the OrderQuoteResponse from OrderBookApi
+        const quote = quoteResponse.quote;
 
-        if (!order) throw new Error("Invalid quote response: missing orderToSign");
+        if (!quote) throw new Error("Invalid quote response: missing quote");
+
+        // Construct order from quote (matching reference implementation)
+        const order = {
+            sellToken: quote.sellToken,
+            buyToken: quote.buyToken,
+            receiver: account, // Ensure receiver is set to user
+            sellAmount: quote.sellAmount,
+            buyAmount: quote.buyAmount,
+            validTo: quote.validTo,
+            appData: quote.appData,
+            feeAmount: '0', // Fee must be zero for CoW Swap orders (surplus capturing)
+            kind: quote.kind,
+            partiallyFillable: quote.partiallyFillable,
+            sellTokenBalance: quote.sellTokenBalance,
+            buyTokenBalance: quote.buyTokenBalance,
+        };
 
         // We need the domain.
         const domain = {
@@ -144,7 +159,9 @@ export const useCowSdk = (): CowHook => {
         const orderId = await swapApi.submitOrder({
             quote: order,
             signature,
-            chainId // Pass chainId to backend
+            chainId, // Pass chainId to backend
+            quoteId: quoteResponse.id, // Pass quoteId from response
+            from: account || ethers.ZeroAddress // Pass user address
         });
 
         return orderId.orderId;

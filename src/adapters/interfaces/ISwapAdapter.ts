@@ -11,8 +11,11 @@ export interface QuoteParams {
 }
 
 export interface OrderParams {
-    quote: any; // The quote object received from getQuote
+    quote: any; // The order object from quoteResults.orderToSign
     signature: string; // The signature from the user
+    quoteId: string; // The ID from the quote response
+    from: string; // The user's address
+    chainId: number;
 }
 
 export interface ISwapAdapter {
