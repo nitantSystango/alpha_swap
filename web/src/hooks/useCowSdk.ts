@@ -49,7 +49,7 @@ export const useCowSdk = (): CowHook => {
                 const sdkInstance = new TradingSdk({
                     chainId: Number(network.chainId),
                     signer,
-                    appCode: 'CowSwapBot',
+                    appCode: 'CoW Swap',
                 });
                 setSdk(sdkInstance);
 

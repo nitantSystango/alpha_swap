@@ -30,7 +30,7 @@ export class CowSwapAdapter implements ISwapAdapter {
         this.sdk = new TradingSdk({
             chainId,
             signer,
-            appCode: 'CowSwapBot',
+            appCode: 'CoW Swap',
         });
         this.orderBookApi = new OrderBookApi({ chainId });
     }
@@ -50,7 +50,11 @@ export class CowSwapAdapter implements ISwapAdapter {
             userAddress,
         };
 
-        const quoteResponse = await this.sdk.getQuote(quoteParams);
+        const advancedSettings = {
+            appData: {}, // This should generate the default hash 0xb48...
+        };
+
+        const quoteResponse = await this.sdk.getQuote(quoteParams, advancedSettings);
         // We return the raw quote response which contains the quote and the order parameters needed for signing
         return quoteResponse;
     }
