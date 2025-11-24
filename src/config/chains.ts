@@ -12,35 +12,35 @@ export const SUPPORTED_CHAINS: Chain[] = [
     {
         chainId: 1,
         name: 'Ethereum',
-        icon: '⟠',
+        icon: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/info/logo.png',
         rpcUrl: 'https://eth.llamarpc.com',
         supportedChainId: SupportedChainId.MAINNET
     },
     {
         chainId: 100,
         name: 'Gnosis',
-        icon: '🟢',
+        icon: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/xdai/info/logo.png',
         rpcUrl: 'https://rpc.gnosischain.com',
         supportedChainId: SupportedChainId.GNOSIS_CHAIN
     },
     {
         chainId: 42161,
         name: 'Arbitrum',
-        icon: '🔵',
+        icon: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/arbitrum/info/logo.png',
         rpcUrl: 'https://arb1.arbitrum.io/rpc',
         supportedChainId: SupportedChainId.ARBITRUM_ONE
     },
     {
         chainId: 8453,
         name: 'Base',
-        icon: '🔷',
+        icon: 'https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/base/info/logo.png',
         rpcUrl: 'https://mainnet.base.org',
         supportedChainId: SupportedChainId.BASE
     },
     {
         chainId: 11155111,
         name: 'Sepolia',
-        icon: '🧪',
+        icon: 'https://raw.githubusercontent.com/cowprotocol/cow-sdk/refs/heads/main/packages/config/src/chains/images/sepolia-logo.svg',
         rpcUrl: 'https://eth-sepolia.public.blastapi.io',
         supportedChainId: SupportedChainId.SEPOLIA
     }

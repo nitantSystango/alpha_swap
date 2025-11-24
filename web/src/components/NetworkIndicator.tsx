@@ -36,7 +36,13 @@ export const NetworkIndicator: React.FC<NetworkIndicatorProps> = ({ chainId }) =
 
     return (
         <div className="network-indicator">
-            <span className="network-icon">{network.icon}</span>
+            <span className="network-icon">
+                {network.icon.startsWith('http') ? (
+                    <img src={network.icon} alt={network.name} style={{ width: '18px', height: '18px', borderRadius: '50%' }} />
+                ) : (
+                    network.icon
+                )}
+            </span>
             <span className="network-name">{network.name}</span>
             <style>{`
                 .network-indicator {

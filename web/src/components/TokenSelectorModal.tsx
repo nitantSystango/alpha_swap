@@ -148,7 +148,11 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
                         title={chain.name}
                         onClick={() => setSelectedChainId(chain.chainId)}
                     >
-                        {chain.icon}
+                        {chain.icon.startsWith('http') ? (
+                            <img src={chain.icon} alt={chain.name} style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
+                        ) : (
+                            chain.icon
+                        )}
                     </button>
                 ))}
             </div>
@@ -168,7 +172,13 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
                             >
                                 <span className="token-icon-small">
                                     {token.logoURI ? <img src={token.logoURI} alt={token.symbol} /> : '🪙'}
-                                    <span className="chain-badge-small">{selectedChain?.icon || '🔷'}</span>
+                                    <span className="chain-badge-small">
+                                        {selectedChain?.icon.startsWith('http') ? (
+                                            <img src={selectedChain.icon} alt={selectedChain.name} style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+                                        ) : (
+                                            selectedChain?.icon || '🔷'
+                                        )}
+                                    </span>
                                 </span>
                                 {token.symbol}
                             </button>
@@ -190,7 +200,13 @@ export const TokenSelectorModal: React.FC<TokenSelectorModalProps> = ({
                             >
                                 <div className="token-icon-large">
                                     {token.logoURI ? <img src={token.logoURI} alt={token.symbol} /> : '🪙'}
-                                    <span className="chain-badge-large">{selectedChain?.icon || '🔷'}</span>
+                                    <span className="chain-badge-large">
+                                        {selectedChain?.icon.startsWith('http') ? (
+                                            <img src={selectedChain.icon} alt={selectedChain.name} style={{ width: '100%', height: '100%', borderRadius: '50%' }} />
+                                        ) : (
+                                            selectedChain?.icon || '🔷'
+                                        )}
+                                    </span>
                                 </div>
                                 <div className="token-info">
                                     <div className="token-name-row">
