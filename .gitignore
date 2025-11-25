@@ -9,3 +9,4 @@ dist/
 *.swo
 *~
 .gemini/
+reference-implementation/

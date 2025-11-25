@@ -77,7 +77,8 @@ export function useTokenApproval(provider: Provider | null, signer: Signer | nul
      */
     const getBalance = useCallback(async (tokenAddress: string): Promise<BalanceResult> => {
         if (!approvalManager || !userAddress) {
-            throw new Error('Approval manager not initialized');
+            // Return default balance instead of throwing error
+            return { balance: '0', decimals: 18, symbol: '', formatted: '0' };
         }
 
         return await approvalManager.getTokenBalance(tokenAddress, userAddress);

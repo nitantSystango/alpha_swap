@@ -13,7 +13,7 @@ export interface CowHook {
     sdk: TradingSdk | null;
     connect: () => Promise<void>;
     disconnect: () => void;
-    getQuote: (sellToken: string, buyToken: string, amount: string, kind: 'sell' | 'buy', decimals: number) => Promise<any>;
+    getQuote: (sellToken: string, buyToken: string, amount: string, kind: 'sell' | 'buy') => Promise<any>;
     placeOrder: (quote: any) => Promise<string>;
 }
 
@@ -73,8 +73,7 @@ export const useCowSdk = (): CowHook => {
         sellToken: string,
         buyToken: string,
         amount: string,
-        kind: 'sell' | 'buy',
-        decimals: number
+        kind: 'sell' | 'buy'
     ) => {
         // Use connected chainId or default to Mainnet (1)
         const activeChainId = chainId || 1;
@@ -87,8 +86,6 @@ export const useCowSdk = (): CowHook => {
             buyToken,
             amount,
             kind,
-            sellTokenDecimals: decimals,
-            buyTokenDecimals: decimals, // TODO: Handle different decimals
             userAddress: activeAccount,
             chainId: activeChainId // Pass chainId to backend
         });

@@ -18,6 +18,10 @@ app.get('/health', (req, res) => {
     res.send('OK');
 });
 
-app.listen(PORT, () => {
+import http from 'http';
+
+const server = http.createServer(app);
+
+server.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });

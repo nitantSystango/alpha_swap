@@ -36,9 +36,10 @@ export class CowSwapAdapter implements ISwapAdapter {
     }
 
     async getQuote(params: QuoteParams): Promise<any> {
-        const { sellToken, buyToken, amount, kind, sellTokenDecimals, buyTokenDecimals, userAddress } = params;
+        const { sellToken, buyToken, amount, kind, userAddress } = params;
 
-        const amountBigInt = ethers.parseUnits(amount, kind === 'sell' ? sellTokenDecimals : buyTokenDecimals);
+        // amount is already in atomic units (BigInt string)
+        const amountBigInt = BigInt(amount);
 
         const quoteRequest = {
             sellToken,
@@ -46,7 +47,7 @@ export class CowSwapAdapter implements ISwapAdapter {
             from: userAddress,
             receiver: userAddress,
             validTo: Math.floor(Date.now() / 1000) + 3600, // 1 hour
-            appData: '0x0000000000000000000000000000000000000000000000000000000000000000', // Zero hash to match reference implementation
+            appData: '0x0000000000000000000000000000000000000000000000000000000000000000', // Zero hash - pre-registered with CoW API
             partiallyFillable: false,
             sellTokenBalance: 'erc20',
             buyTokenBalance: 'erc20',

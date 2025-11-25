@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api/swap';
+const API_URL = '/api/swap';
 
 export const swapApi = {
     getQuote: async (params: any) => {

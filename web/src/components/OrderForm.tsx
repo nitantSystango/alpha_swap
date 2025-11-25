@@ -124,13 +124,12 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
         setError(null);
 
         try {
-            const decimals = sellToken.decimals;
+            const atomicAmount = ethers.parseUnits(debouncedAmount, sellToken.decimals).toString();
             const q = await getQuote(
                 sellToken.address,
                 buyToken.address,
-                debouncedAmount,
-                'sell',
-                decimals
+                atomicAmount,
+                'sell'
             );
             setQuote(q);
         } catch (err: any) {
@@ -277,7 +276,13 @@ export const OrderForm: React.FC<OrderFormProps> = ({ cowSdk }) => {
                         <div className="input-row">
                             <input
                                 type="text"
-                                value={quote ? parseFloat(ethers.formatUnits(quote.quote.buyAmount, buyToken?.decimals)).toFixed(6).replace(/\.?0+$/, '') : ''}
+                                value={(() => {
+                                    if (!quote || !buyToken) return '';
+                                    // CoW Protocol API returns amounts in 18 decimals regardless of token decimals
+                                    // So we always format with 18 decimals
+                                    const formatted = ethers.formatUnits(quote.quote.buyAmount, 18);
+                                    return parseFloat(formatted).toFixed(6).replace(/\.?0+$/, '');
+                                })()}
                                 readOnly
                                 placeholder="0.0"
                                 className="amount-input"

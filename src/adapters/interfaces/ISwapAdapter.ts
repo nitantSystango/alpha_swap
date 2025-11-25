@@ -3,10 +3,8 @@ import { OrderQuoteResponse } from '@cowprotocol/cow-sdk';
 export interface QuoteParams {
     sellToken: string;
     buyToken: string;
-    amount: string; // Human readable
+    amount: string; // Atomic units
     kind: 'sell' | 'buy';
-    sellTokenDecimals: number;
-    buyTokenDecimals: number;
     userAddress: string;
 }
 
